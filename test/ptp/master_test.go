@@ -3,6 +3,7 @@ package ptp_test
 import (
 	"context"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -11,6 +12,12 @@ import (
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	// Timeout and Interval settings
+	Timeout  = time.Minute * 15
+	Interval = time.Second * 30
 )
 
 var _ = Describe("T-GM", func() {
@@ -54,6 +61,7 @@ var _ = Describe("T-GM", func() {
 			commands := []string{
 				"/bin/sh", "-c", "timeout 2 cat " + ttyGNSS,
 			}
+
 			buf, _ := pods.ExecCommand(clients["GM"], ptpRunningPods[0], pkg.PtpContainerName, commands)
 			outstring := buf.String()
 			Expect(outstring).To(Not(BeEmpty()))
@@ -76,7 +84,7 @@ var _ = Describe("T-GM", func() {
 			}
 			_, err := pods.GetLog(clients["GM"], ptpRunningPods[0], pkg.PtpContainerName)
 			Expect(err).NotTo(HaveOccurred(), "Error to find needed log due to %s", err)
-			result := pods.WaitUntilLogIsDetectedRegex(clients["GM"], ptpRunningPods[0], pkg.Timeout10Seconds, "nmea sentence: GNRMC(.*)")
+			result := pods.WaitUntilLogIsDetectedRegex(clients["GM"], ptpRunningPods[0], pkg.TimeoutIn5Minutes, "nmea sentence: GNRMC(.*)")
 			logrus.Infof("captured log: %s", result)
 			s := strings.Split(result, ",")
 			// Expecting: ,230304.00,A,4233.01530,N,07112.87856,W,0.002,,071222,,,A,V

@@ -1,13 +1,17 @@
 package ptp_test
 
 import (
+	"context"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	v1 "github.com/redhat-eets/sno-tests/api/v1"
 	client "github.com/redhat-eets/sno-tests/test/pkg/client"
+	ptputil "github.com/redhat-eets/sno-tests/test/pkg/ptp"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,6 +45,9 @@ func TestPtp(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Ptp Suite")
 }
+
+var ptpConfigGM *v1.PtpConfig
+var ptpConfigTester *v1.PtpConfig
 
 var _ = BeforeSuite(func() {
 	// Get the config file location from enviroment
@@ -95,8 +102,61 @@ var _ = BeforeSuite(func() {
 		clients[role] = clusters[kubecfg]
 	}
 
+	ptpConfigGM, err = ptputil.GetFromTemplate(topo.PTP.GM.Node, *topo.PTP.GM.PortTester)
+	Expect(err).NotTo(HaveOccurred())
+
+	ptpConfigTester = ptpConfigGM
+
+	if topo.PTP.GM != nil && topo.PTP.GM.Node != "" {
+		err := configurePTP(clients["GM"], ptpConfigGM, "PTP_GM_CONFIG_FILE")
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	if topo.PTP.Tester != nil && topo.PTP.Tester.Node != "" {
+		err := configurePTP(clients["Tester"], ptpConfigTester, "PTP_TESTER_CONFIG_FILE")
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	mapFirstElement := reflect.ValueOf(clients).MapKeys()[0]
+	client := clients[mapFirstElement.String()]
+	err = ptputil.ConfigurePTPLeapFileConfigMap(client)
+	Expect(err).NotTo(HaveOccurred())
 })
 
-var _ = AfterEach(func() {
+var _ = AfterSuite(func() {
+	if topo.PTP.GM != nil && topo.PTP.GM.Node != "" {
+		err := deletePTPConfig(clients["GM"], ptpConfigGM)
+		Expect(err).NotTo(HaveOccurred())
+	}
 
+	if topo.PTP.Tester != nil && topo.PTP.Tester.Node != "" {
+		err := deletePTPConfig(clients["Tester"], ptpConfigTester)
+		Expect(err).NotTo(HaveOccurred())
+	}
 })
+
+func configurePTP(client *client.ClientSet, ptpConfig *v1.PtpConfig, configFile string) error {
+	var err error
+	if ptpConfigFile := os.Getenv(configFile); len(ptpConfigFile) != 0 {
+		ptpConfig, err = ptputil.GetFromFile(ptpConfigFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = client.Create(context.Background(), ptpConfig)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deletePTPConfig(client *client.ClientSet, ptpConfig *v1.PtpConfig) error {
+	err := ptputil.Delete(client, ptpConfig)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

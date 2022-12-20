@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ptpv1 "github.com/openshift/ptp-operator/pkg/client/clientset/versioned/typed/ptp/v1"
+	ptpapiv1 "github.com/redhat-eets/sno-tests/api/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -67,6 +68,10 @@ func New(kubeconfig string) *ClientSet {
 	}
 
 	if err := apiext.AddToScheme(myScheme); err != nil {
+		panic(err)
+	}
+
+	if err := ptpapiv1.AddToScheme(myScheme); err != nil {
 		panic(err)
 	}
 
