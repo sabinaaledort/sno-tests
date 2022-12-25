@@ -239,3 +239,22 @@ func containerByName(pod *corev1.Pod, containerName string) *corev1.Container {
 
 	return nil
 }
+
+func GetPTPDaemonPods(api *client.ClientSet) ([]*corev1.Pod, error) {
+	ptpRunningPods := []*corev1.Pod{}
+
+	ptpPods, err := api.CoreV1().Pods(pkg.PtpLinuxDaemonNamespace).List(context.Background(), metav1.ListOptions{LabelSelector: "app=linuxptp-daemon"})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ptpPods.Items) == 0 {
+		return nil, fmt.Errorf("linuxptp-daemon is not deployed on cluster")
+	}
+
+	for podIndex := range ptpPods.Items {
+		ptpRunningPods = append(ptpRunningPods, &ptpPods.Items[podIndex])
+	}
+
+	return ptpRunningPods, nil
+}

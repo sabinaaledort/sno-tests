@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/golang/glog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientconfigv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -14,9 +15,9 @@ import (
 	networkv1client "k8s.io/client-go/kubernetes/typed/networking/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ptpv1 "github.com/openshift/ptp-operator/pkg/client/clientset/versioned/typed/ptp/v1"
+	ptpapiv1 "github.com/redhat-eets/sno-tests/api/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -67,6 +68,10 @@ func New(kubeconfig string) *ClientSet {
 	}
 
 	if err := apiext.AddToScheme(myScheme); err != nil {
+		panic(err)
+	}
+
+	if err := ptpapiv1.AddToScheme(myScheme); err != nil {
 		panic(err)
 	}
 
